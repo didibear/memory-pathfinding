@@ -1,35 +1,32 @@
 import gym
 import gym_pathfinding
-
-from gym_pathfinding.games.gridworld import generate_grid, MOUVEMENT
-from gym_pathfinding.envs.partially_observable_env import partial_grid
-from astar import astar
-from tqdm import tqdm
 import numpy as np
 import operator
 import itertools
+import json
+from tqdm import tqdm
+
+from gym_pathfinding.games.gridworld import generate_grid, MOUVEMENT
+from gym_pathfinding.games.astar import astar
+from gym_pathfinding.envs.partially_observable_env import partial_grid
+
+from memory_pathfinding import MemoryPathfindingEnvConfig, get_show_function_from_spec
+
+
+
 
 class DatasetGenerator():
-    
-    def __init__(self, grid_type="free", observable_depth=2, timesteps=10, partial_type=None):
-        """
-        Arguments
-        ---------
-        grid_type : the type of grid ("free", "obstacle", "maze")
-        observable_depth : the number of visible cell around the start
-        partial_type : "total", "at-start", "flickering", 
-        """
+    """See MemoryPathfindingEnvConfig docstring"""
+
+    def __init__(self, shape, grid_type, observable_depth, show_function, timesteps):
+        self.shape = shape
         self.grid_type = grid_type
         self.observable_depth = observable_depth
+        self.show_function = show_function
         self.timesteps = timesteps
 
     def generate_dataset(self, size, shape, *, timesteps = 10):
         """
-        Arguments
-        ---------
-        size : number of episodes generated
-        shape : the grid shape
-
         Return
         ------
         return episodes, a list of tuple (images, labels)
@@ -45,16 +42,16 @@ class DatasetGenerator():
             grid, start, goal = generate_grid(shape, grid_type=self.grid_type)
             path, action_planning = compute_action_planning(grid, start, goal)
 
-            goal_grid = create_goal_grid(grid.shape, goal)
-
-            episode = self.generate_episode_totally_partial(grid, goal_grid, action_planning, path)
+            episode = self.generate_episode(grid, goal, action_planning, path)
 
             images, labels = zip(*episode)
 
             episodes.append((images, labels))
         return episodes
 
-    def generate_episode_totally_partial(self, grid, goal_grid, action_planning, path):
+    def generate_episode(self, grid, goal_grid, action_planning, path):
+        goal_grid = create_goal_grid(grid.shape, goal)
+
         for timestep in range(self.timesteps):
             # at the end, pad the episode with the last action
             if (timestep < len(action_planning)): 
@@ -67,21 +64,6 @@ class DatasetGenerator():
                 image = np.stack([_partial_grid, goal_grid], axis=2)
             
             yield image, action
-
-    def generate_episode_flickering_partial(self, grid, goal_grid, action_planning, path):
-        for timestep in range(self.timesteps):
-            # at the end, pad the episode with the last action
-            if (timestep < len(action_planning)): 
-                action = action_planning[timestep]
-                position = path[timestep]
-                
-                _partial_grid = partial_grid(grid, position, self.observable_depth)
-                _partial_grid = grid_with_start(_partial_grid, position)
-
-                image = np.stack([_partial_grid, goal_grid], axis=2)
-            
-            yield image, action
-
 
 # reversed MOUVEMENT dict
 ACTION = {mouvement: action for action, mouvement in dict(enumerate(MOUVEMENT)).items()}
@@ -119,30 +101,36 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='Generate data, list of (images, labels)')
-    parser.add_argument('--out', '-o', type=str, default='./data/dataset.pkl', help='Path to save the dataset')
+    parser.add_argument("--env_spec", type=str, default="./env_spec.json", help=MemoryPathfindingEnvConfig.__doc__)
     parser.add_argument('--size', '-s', type=int, default=10000, help='Number of example')
-    parser.add_argument('--shape', type=int, default=[9, 9], nargs=2, help='Shape of the grid (e.g. --shape 9 9)')
-    parser.add_argument('--grid_type', type=str, default='free', help='Type of grid : "free", "obstacle" or "maze"')
-    parser.add_argument('--timesteps', type=int, default=10, help='Number of timestep per episode (constant for all, no matter what happened)')
+    parser.add_argument('--out', '-o', type=str, default='./data/dataset.pkl', help='Path to save the dataset')
     args = parser.parse_args()
 
+    spec = spec_from_json(MemoryPathfindingEnvConfig, args.env_spec)
+
+
     generator = DatasetGenerator(
-        grid_type=args.grid_type, 
-        observable_depth=2,
-        partial_type=None
+        shape=(spec.height, spec.width),
+        grid_type=spec.grid_type, 
+        observable_depth=spec.obs_depth,
+        show_function=get_show_function_from_spec(spec),
+        timesteps=spec.seq_length
     )
 
-    dataset = generator.generate_dataset(1, (5, 5), timesteps=10)
+    dataset = generator.generate_dataset(1)
 
     # dataset = generate_dataset(args.size, args.shape, 
     #     grid_type=args.grid_type, 
     #     observable_depth=2,
     #     partial_type=None
-    # )
+    # ) 
 
-    # print("Saving data into {}".format(args.out))
-    # joblib.dump(dataset, args.out)
+    print("Saving data into {}".format(args.out))
+    joblib.dump(dataset, args.out)
     print("Done")
+
+def spec_from_json(SpecClass, jsonfile):
+    return SpecClass(**json.load(open(jsonfile)))
 
 if __name__ == "__main__":
     main()

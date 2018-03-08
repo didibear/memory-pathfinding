@@ -5,7 +5,7 @@ from gym_pathfinding.envs.pathfinding_env import PathFindingEnv
 from gym_pathfinding.envs.partially_observable_env import partial_grid
 import random
 
-class MemoryPathfindingConfig(namedtuple("MemoryPathfinding", ["height", "width", "grid_type", "obs_depth", "seq_length", "show", "start_steps", "show_prob", "show_seed"])):
+class MemoryPathfindingEnvConfig(namedtuple("MemoryPathfinding", ["height", "width", "grid_type", "obs_depth", "seq_length", "show", "start_steps", "show_prob", "show_seed"])):
     """
     ### Specification of a Pathfinding environment.
 
@@ -25,7 +25,7 @@ class MemoryPathfindingConfig(namedtuple("MemoryPathfinding", ["height", "width"
     """
     pass
 
-class MemoryPathfinding(gym.Env):
+class MemoryPathfindingEnv(gym.Env):
     """
     Parameter
     ---------

@@ -4,13 +4,13 @@ import time
 import json
 from collections import namedtuple
 
-from memory_pathfinding import MemoryPathfinding, MemoryPathfindingConfig
+from memory_pathfinding import MemoryPathfindingEnv, MemoryPathfindingEnvConfig
 from macn.model import MACN, MACNConfig
 
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string("env_spec", "./env_spec.json", MemoryPathfindingConfig.__doc__)
+tf.flags.DEFINE_string("env_spec", "./env_spec.json", MemoryPathfindingEnvConfig.__doc__)
 tf.flags.DEFINE_string("model_spec", "./model_spec.json", MACNConfig.__doc__)
 
 tf.flags.DEFINE_integer("batch_size",   32,  "Batch size (batch of episode)")
@@ -25,10 +25,10 @@ tf.flags.DEFINE_integer("test_seed",    1,      "The seed to generate test envir
 tf.flags.DEFINE_boolean("render", True, "Weither or not to show the env grid")
 
 def main(args):
-    env_spec = spec_from_json(MemoryPathfindingConfig, FLAGS.env_spec)
+    env_spec = spec_from_json(MemoryPathfindingEnvConfig, FLAGS.env_spec)
     model_spec = spec_from_json(MACNConfig, FLAGS.model_spec)
     
-    env = MemoryPathfinding.from_spec(env_spec)
+    env = MemoryPathfindingEnv.from_spec(env_spec)
     macn = MACN.from_spec(model_spec)
     
     with tf.Session() as sess:

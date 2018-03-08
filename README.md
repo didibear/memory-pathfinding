@@ -2,7 +2,7 @@
 Partially observable pathfinding sometime totally visible
 
 <p align="center">
-  <img src="./memory_maze.png" width="80%"/>
+  <img src="./memory_maze.png" width="90%"/>
 </p>
 
 Here the Memory Maze, an partially observable environment that is open sometimes.
