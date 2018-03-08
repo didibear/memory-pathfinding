@@ -1,7 +1,29 @@
+from collections import namedtuple
+
 import gym
 from gym_pathfinding.envs.pathfinding_env import PathFindingEnv
 from gym_pathfinding.envs.partially_observable_env import partial_grid
 import random
+
+class MemoryPathfindingConfig(namedtuple("MemoryPathfinding", ["height", "width", "grid_type", "obs_depth", "seq_length", "show", "start_steps", "show_prob", "show_seed"])):
+    """
+    ### Specification of a Pathfinding environment.
+
+    height:     Grid height
+    width:      Grid width
+
+    grid_type:  Grid type : {"free", "obstacle", "maze"}
+    obs_depth:  Observation depth
+    seq_length: Length of an episode (number of timesteps)
+
+    ### Show properties
+    show:       When to show the grid : {"total", "sometimes", "start", "hide"}
+
+    start_steps:    Only use if show="start", the number of step the grid is shown
+    show_prob:      Only use if show="sometimes", the probability to show the solution
+    show_seed:      Only use if show="sometimes", the random seed of the probability
+    """
+    pass
 
 class MemoryPathfinding(gym.Env):
     """
@@ -11,6 +33,16 @@ class MemoryPathfinding(gym.Env):
     show_state: a function that return weither or not to show the grid state (boolean)
         def show_state(timestep)
     """
+    @classmethod
+    def from_spec(cls, spec):
+        """ spec: the model spec (type MACNConfig) """
+        return cls(
+            lines=spec.height, 
+            columns=spec.width, 
+            observable_depth=spec.obs_depth,
+            grid_type=spec.grid_type,  
+            show_state=get_show_function_from_spec(spec),
+        )
 
     def __init__(self, lines, columns, observable_depth, *, 
             grid_type="free",  
@@ -67,8 +99,6 @@ class MemoryPathfinding(gym.Env):
     def partial_state(self, state):
         return partial_grid(state, self.env.game.player, self.observable_depth)
 
-
-
 # Show function :
 
 def total_show(timestep):
@@ -88,12 +118,11 @@ def show_start(nb_steps):
         return timestep < nb_steps
     return show_state
 
-
-
-
-
-
-
-
-
+def get_show_function_from_spec(spec):
+    return {
+        "total":        total_show,
+        "hide":         total_hide,
+        "start":        show_start(spec.start_steps),
+        "sometimes":    show_sometimes(spec.show_prob, spec.show_seed)
+    }[spec.show]
 

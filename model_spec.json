@@ -1,0 +1,17 @@
+{
+    "image_shape": [9, 9, 2],
+    "vin_config": {
+        "k": 10, 
+        "ch_h": 150, 
+        "ch_q": 4
+    },
+    "access_config":{
+        "memory_size": 32, 
+        "word_size": 8, 
+        "num_reads": 4, 
+        "num_writes": 1
+    }, 
+    "controller_config":{
+        "hidden_size": 256
+    }
+}
