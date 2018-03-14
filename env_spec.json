@@ -2,11 +2,11 @@
     "height": 9,
     "width": 9,
 
-    "grid_type": "free",
+    "grid_type": "obstacle",
     "obs_depth": 2,
     "seq_length": 10, 
 
-    "show": "hide",
+    "show": "start",
 
     "start_steps": 1,
     "show_prob": 0.2,

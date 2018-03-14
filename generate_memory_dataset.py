@@ -12,9 +12,6 @@ from gym_pathfinding.envs.partially_observable_env import partial_grid
 
 from memory_pathfinding import MemoryPathfindingEnvConfig, get_show_function_from_spec
 
-
-
-
 class DatasetGenerator():
     """See MemoryPathfindingEnvConfig docstring"""
 
@@ -25,7 +22,7 @@ class DatasetGenerator():
         self.show_function = show_function
         self.timesteps = timesteps
 
-    def generate_dataset(self, size, shape, *, timesteps = 10):
+    def generate_dataset(self, size):
         """
         Return
         ------
@@ -39,7 +36,7 @@ class DatasetGenerator():
         """
         episodes = []
         for _ in tqdm(range(size)):
-            grid, start, goal = generate_grid(shape, grid_type=self.grid_type)
+            grid, start, goal = generate_grid(self.shape, grid_type=self.grid_type)
             path, action_planning = compute_action_planning(grid, start, goal)
 
             episode = self.generate_episode(grid, goal, action_planning, path)
@@ -49,20 +46,29 @@ class DatasetGenerator():
             episodes.append((images, labels))
         return episodes
 
-    def generate_episode(self, grid, goal_grid, action_planning, path):
-        goal_grid = create_goal_grid(grid.shape, goal)
+    def generate_episode(self, grid, goal, action_planning, path):
+        visible_goal_grid = create_goal_grid(grid.shape, goal)
+        invisible_goal_grid = np.zeros(grid.shape, dtype=np.int8)
 
         for timestep in range(self.timesteps):
             # at the end, pad the episode with the last action
             if (timestep < len(action_planning)): 
                 action = action_planning[timestep]
                 position = path[timestep]
-                
+
+                # Compute the partial grid
                 _partial_grid = partial_grid(grid, position, self.observable_depth)
                 _partial_grid = grid_with_start(_partial_grid, position)
 
+                # Goal grid contains something only if the goal is visible
+                goal_grid = visible_goal_grid if _partial_grid[goal] != -1 else invisible_goal_grid
+                
+                # Stack partial and goal grid
                 image = np.stack([_partial_grid, goal_grid], axis=2)
             
+            if (self.show_function(timestep)):
+                image = np.stack([grid_with_start(grid, position), visible_goal_grid], axis=2)
+
             yield image, action
 
 # reversed MOUVEMENT dict
@@ -117,13 +123,7 @@ def main():
         timesteps=spec.seq_length
     )
 
-    dataset = generator.generate_dataset(1)
-
-    # dataset = generate_dataset(args.size, args.shape, 
-    #     grid_type=args.grid_type, 
-    #     observable_depth=2,
-    #     partial_type=None
-    # ) 
+    dataset = generator.generate_dataset(args.size)
 
     print("Saving data into {}".format(args.out))
     joblib.dump(dataset, args.out)
